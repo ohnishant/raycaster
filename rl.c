@@ -1,6 +1,7 @@
 #include <float.h>
 #include <math.h>
 #include <raylib.h>
+#include <stdio.h>
 
 #define WINDOW_WIDTH 1024
 #define WINDOW_HEIGHT 1024
@@ -20,6 +21,13 @@ typedef struct {
     Vector2 delta;
     float rot_angle;
 } Player;
+
+typedef struct {
+    float distance;
+    int color;
+} ScreenSlice;
+
+typedef ScreenSlice ScreenBuffer[50];
 
 int map[MAP_NUM_ROWS][MAP_NUM_COLS] = {
     { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
@@ -45,12 +53,22 @@ Player p = {
     .delta = { 0, 0 },
     .rot_angle = -M_PI / 3,
 };
+bool hideMap = false;
+
+ScreenBuffer screenBuffer = { 0 };
 
 void drawMap();
 void drawRays(Player p);
 void handleControls(Player* p);
 void drawPlayer(Player p);
 float distance(Vector2 a, Vector2 b);
+
+void printScreenBuffer() {
+    printf("Printing screen buffer\n");
+    for (int i = 0; i < 50; ++i) {
+        printf("Distance: %f Color: %d\n", screenBuffer[i].distance, screenBuffer[i].color);
+    }
+}
 
 int main() {
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Raycaster");
@@ -67,6 +85,42 @@ int main() {
             drawMap();
             drawPlayer(p);
             drawRays(p);
+            for (int i = 0l; i < 50; ++i) {
+
+                Color color = { 0 };
+                switch (screenBuffer[i].color) {
+                case 1:
+                    color = GRAY;
+                    break;
+                case 2:
+                    color = GREEN;
+                    break;
+                case 3:
+                    color = RED;
+                    break;
+                case 4:
+                    color = YELLOW;
+                    break;
+                default:
+                    color = BLACK;
+                    break;
+                }
+                if (screenBuffer[i].distance < 1000) {
+
+                    // Calculate the rectangle height inversely proportional to the distance
+                    float rectHeight = 100000 / screenBuffer[i].distance; // You can adjust the 1000 for scaling
+                    float rectWidth = WINDOW_WIDTH / 50; // Keep a fixed width
+
+                    // Calculate vertical position so the rectangle is centered vertically
+                    float rectY = (WINDOW_HEIGHT / 2) - rectHeight / 2;
+
+                    // Draw the rectangle with a height that changes based on the distance
+                    DrawRectangle(i * rectWidth, rectY, rectWidth, rectHeight, color);
+                }
+                if (IsKeyDown(KEY_I)) {
+                    printScreenBuffer();
+                }
+            }
             DrawText(coords, 70, 70, 20, WHITE);
             handleControls(&p);
         }
@@ -82,6 +136,10 @@ void drawPlayer(Player p) {
 }
 
 void drawMap() {
+    if (hideMap) {
+        return;
+    }
+
     for (int i = 0; i < MAP_NUM_ROWS; i++) {
         for (int j = 0; j < MAP_NUM_COLS; j++) {
             Rectangle r = {
@@ -112,7 +170,7 @@ void drawMap() {
 }
 
 void drawRays(Player p) {
-    int numRays = 20;
+    int numRays = 50;
     int mx, my; // map position
     int depthOfField = 0;
 
@@ -124,6 +182,8 @@ void drawRays(Player p) {
 
     float rayAngle;
     float xOffset, yOffset;
+    int colorH;
+    int colorV;
 
     // Horizontal Ray Casting
     for (int i = 0; i < numRays; ++i) {
@@ -168,6 +228,8 @@ void drawRays(Player p) {
             }
             if (map[my][mx] != 0) {
                 depthOfField = RENDER_DISTANCE;
+                colorH = map[my][mx];
+                distH = distance(p.pos, rayH);
                 break;
             }
 
@@ -210,6 +272,8 @@ void drawRays(Player p) {
             }
             if (map[my][mx] != 0) {
                 depthOfField = RENDER_DISTANCE;
+                colorV = map[my][mx];
+                distV = distance(p.pos, rayV);
                 break;
             }
 
@@ -218,12 +282,14 @@ void drawRays(Player p) {
             depthOfField++;
         }
 
-        distH = distance(p.pos, rayH);
-        distV = distance(p.pos, rayV);
         if (distH < distV) {
-            DrawLineEx(p.pos, rayH, 1, GREEN);
+            screenBuffer[i].distance = distance(p.pos, rayH);
+            screenBuffer[i].color = colorH;
+            /*DrawLineEx(p.pos, rayH, 1, GREEN);*/
         } else {
-            DrawLineEx(p.pos, rayV, 1, GREEN);
+            screenBuffer[i].distance = distance(p.pos, rayV);
+            screenBuffer[i].color = colorV;
+            /*DrawLineEx(p.pos, rayV, 1, GREEN);*/
         }
     }
 }
@@ -255,7 +321,7 @@ void handleControls(Player* p) {
     int mapX = (int)(nextPos.x / MAP_TILE_SIZE);
     int mapY = (int)(nextPos.y / MAP_TILE_SIZE);
 
-    float offset = 2.0f;
+    float offset = 10.0f;
 
     if (mapX >= 0 && mapX < MAP_NUM_COLS && mapY >= 0 && mapY < MAP_NUM_ROWS && map[mapY][mapX] == 0) {
         // No wall, update position
@@ -277,5 +343,8 @@ void handleControls(Player* p) {
         }
         p->delta.x = cosf(p->rot_angle) * WALKING_SPEED;
         p->delta.y = sinf(p->rot_angle) * WALKING_SPEED;
+    }
+    if (IsKeyPressed(KEY_M)) {
+        hideMap = !hideMap;
     }
 }
