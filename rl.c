@@ -12,7 +12,9 @@
 #define MAP_TILE_SIZE (int)(WINDOW_HEIGHT / MAP_NUM_ROWS)
 
 #define RENDER_DISTANCE 16
-#define FOV 60
+#define FOV 100
+#define RESOLUTION 100
+
 #define ROTATION_SPEED 0.1f
 #define WALKING_SPEED 1.0f
 
@@ -25,12 +27,13 @@ typedef struct {
 typedef struct {
     float distance;
     int color;
+    char side;
 } ScreenSlice;
 
-typedef ScreenSlice ScreenBuffer[50];
+typedef ScreenSlice ScreenBuffer[RESOLUTION];
 
 int map[MAP_NUM_ROWS][MAP_NUM_COLS] = {
-    { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+    { 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
     { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 },
     { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 },
     { 1, 0, 0, 0, 0, 0, 0, 3, 0, 3, 0, 3, 0, 0, 0, 1 },
@@ -65,7 +68,7 @@ float distance(Vector2 a, Vector2 b);
 
 void printScreenBuffer() {
     printf("Printing screen buffer\n");
-    for (int i = 0; i < 50; ++i) {
+    for (int i = 0; i < RESOLUTION; ++i) {
         printf("Distance: %f Color: %d\n", screenBuffer[i].distance, screenBuffer[i].color);
     }
 }
@@ -85,31 +88,36 @@ int main() {
             drawMap();
             drawPlayer(p);
             drawRays(p);
-            for (int i = 0l; i < 50; ++i) {
+            DrawRectangle(0, WINDOW_HEIGHT / 2, WINDOW_WIDTH, WINDOW_HEIGHT / 2, SKYBLUE);
+            for (int i = 0l; i < RESOLUTION; ++i) {
 
                 Color color = { 0 };
                 switch (screenBuffer[i].color) {
                 case 1:
-                    color = GRAY;
+                    color = (Color) { 130, 130, 130, 255 };
                     break;
                 case 2:
-                    color = GREEN;
+                    color = (Color) { 0, 228, 48, 255 };
                     break;
                 case 3:
-                    color = RED;
+                    color = (Color) { 230, 41, 55, 255 };
                     break;
                 case 4:
-                    color = YELLOW;
+                    color = (Color) { 253, 249, 0, 255 };
                     break;
                 default:
-                    color = BLACK;
+                    color = (Color) { 0, 0, 0, 255 };
                     break;
                 }
-                if (screenBuffer[i].distance < 1000) {
+                if (screenBuffer[i].side == 'H') {
+                    color = (Color) { 3 * color.r / 4, 3 * color.g / 4, 3 * color.b / 4, color.a };
+                }
+
+                if (screenBuffer[i].distance < 1024) {
 
                     // Calculate the rectangle height inversely proportional to the distance
-                    float rectHeight = 100000 / screenBuffer[i].distance; // You can adjust the 1000 for scaling
-                    float rectWidth = WINDOW_WIDTH / 50; // Keep a fixed width
+                    float rectHeight = 10000 / screenBuffer[i].distance; // You can adjust the 1000 for scaling
+                    float rectWidth = WINDOW_WIDTH / RESOLUTION; // Keep a fixed width
 
                     // Calculate vertical position so the rectangle is centered vertically
                     float rectY = (WINDOW_HEIGHT / 2) - rectHeight / 2;
@@ -170,7 +178,7 @@ void drawMap() {
 }
 
 void drawRays(Player p) {
-    int numRays = 50;
+    int numRays = RESOLUTION;
     int mx, my; // map position
     int depthOfField = 0;
 
@@ -285,11 +293,13 @@ void drawRays(Player p) {
         if (distH < distV) {
             screenBuffer[i].distance = distance(p.pos, rayH);
             screenBuffer[i].color = colorH;
-            /*DrawLineEx(p.pos, rayH, 1, GREEN);*/
+            screenBuffer[i].side = 'H';
+            DrawLineEx(p.pos, rayH, 1, GREEN);
         } else {
             screenBuffer[i].distance = distance(p.pos, rayV);
             screenBuffer[i].color = colorV;
-            /*DrawLineEx(p.pos, rayV, 1, GREEN);*/
+            screenBuffer[i].side = 'V';
+            DrawLineEx(p.pos, rayV, 1, GREEN);
         }
     }
 }
