@@ -1,1 +1,24 @@
-[]
+[
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-I.",
+      "-I./external/include/",
+      "-I./external/raylib-5.0_linux_i386/include/",
+      "-I./include/",
+      "-Wall",
+      "-Wextra",
+      "-Wsign-conversion",
+      "-Wconversion",
+      "-ffast-math",
+      "-fopenmp",
+      "-o",
+      "build/main.o",
+      "main.c"
+    ],
+    "directory": "/home/nish/Projects/raycast_gl",
+    "file": "/home/nish/Projects/raycast_gl/main.c",
+    "output": "/home/nish/Projects/raycast_gl/build/main.o"
+  }
+]

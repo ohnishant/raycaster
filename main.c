@@ -1,6 +1,8 @@
+#include "game_objects.h"
+
+#include "raylib.h"
 #include <float.h>
 #include <math.h>
-#include <raylib.h>
 #include <stdio.h>
 
 #define WINDOW_WIDTH 1024
@@ -12,17 +14,11 @@
 #define MAP_TILE_SIZE (int)(WINDOW_HEIGHT / MAP_NUM_ROWS)
 
 #define RENDER_DISTANCE 16
-#define FOV 100
-#define RESOLUTION 100
+#define FOV 70
+#define RESOLUTION 60
 
 #define ROTATION_SPEED 0.1f
 #define WALKING_SPEED 1.0f
-
-typedef struct {
-    Vector2 pos;
-    Vector2 delta;
-    float rot_angle;
-} Player;
 
 typedef struct {
     float distance;
@@ -33,7 +29,7 @@ typedef struct {
 typedef ScreenSlice ScreenBuffer[RESOLUTION];
 
 int map[MAP_NUM_ROWS][MAP_NUM_COLS] = {
-    { 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+    { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
     { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 },
     { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 },
     { 1, 0, 0, 0, 0, 0, 0, 3, 0, 3, 0, 3, 0, 0, 0, 1 },
@@ -44,7 +40,7 @@ int map[MAP_NUM_ROWS][MAP_NUM_COLS] = {
     { 1, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 },
     { 1, 4, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 },
     { 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 },
-    { 1, 4, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 },
+    { 1, 4, 0, 4, 2, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 1 },
     { 1, 4, 0, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 },
     { 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 },
     { 1, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 },
@@ -54,7 +50,7 @@ int map[MAP_NUM_ROWS][MAP_NUM_COLS] = {
 Player p = {
     .pos = { 2 * MAP_TILE_SIZE, 2 * MAP_TILE_SIZE },
     .delta = { 0, 0 },
-    .rot_angle = -M_PI / 3,
+    .rot_angle = (float)-M_PI / 3.0,
 };
 bool hideMap = false;
 
@@ -66,18 +62,14 @@ void handleControls(Player* p);
 void drawPlayer(Player p);
 float distance(Vector2 a, Vector2 b);
 
-void printScreenBuffer() {
-    printf("Printing screen buffer\n");
-    for (int i = 0; i < RESOLUTION; ++i) {
-        printf("Distance: %f Color: %d\n", screenBuffer[i].distance, screenBuffer[i].color);
-    }
-}
+void printScreenBuffer();
 
 int main() {
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Raycaster");
     SetTargetFPS(60);
 
-    p.delta.x = cosf(p.rot_angle) * WALKING_SPEED;
+    p.delta.x
+        = cosf(p.rot_angle) * WALKING_SPEED;
     p.delta.y = sinf(p.rot_angle) * WALKING_SPEED;
 
     while (!WindowShouldClose()) {
@@ -88,8 +80,11 @@ int main() {
             drawMap();
             drawPlayer(p);
             drawRays(p);
+            // Sky
             DrawRectangle(0, WINDOW_HEIGHT / 2, WINDOW_WIDTH, WINDOW_HEIGHT / 2, SKYBLUE);
-            for (int i = 0l; i < RESOLUTION; ++i) {
+            // Ground
+            DrawRectangle(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT / 2, BLUE);
+            for (int i = 0; i < RESOLUTION; ++i) {
 
                 Color color = { 0 };
                 switch (screenBuffer[i].color) {
@@ -117,10 +112,10 @@ int main() {
 
                     // Calculate the rectangle height inversely proportional to the distance
                     float rectHeight = 10000 / screenBuffer[i].distance; // You can adjust the 1000 for scaling
-                    float rectWidth = WINDOW_WIDTH / RESOLUTION; // Keep a fixed width
+                    float rectWidth = (float)WINDOW_WIDTH / RESOLUTION; // Keep a fixed width
 
                     // Calculate vertical position so the rectangle is centered vertically
-                    float rectY = (WINDOW_HEIGHT / 2) - rectHeight / 2;
+                    float rectY = ((float)WINDOW_HEIGHT / 2) - rectHeight / 2;
 
                     // Draw the rectangle with a height that changes based on the distance
                     DrawRectangle(i * rectWidth, rectY, rectWidth, rectHeight, color);
@@ -139,8 +134,18 @@ int main() {
 // _____________________________________________________________________________
 
 void drawPlayer(Player p) {
+    if (hideMap) {
+        return;
+    }
     DrawCircleV(p.pos, 5, RED);
     DrawLineEx(p.pos, (Vector2) { p.pos.x + p.delta.x * 10, p.pos.y + p.delta.y * 10 }, 4, RED);
+}
+
+void printScreenBuffer() {
+    printf("Printing screen buffer\n");
+    for (int i = 0; i < RESOLUTION; ++i) {
+        printf("Distance: %f Color: %d\n", screenBuffer[i].distance, screenBuffer[i].color);
+    }
 }
 
 void drawMap() {
@@ -294,11 +299,17 @@ void drawRays(Player p) {
             screenBuffer[i].distance = distance(p.pos, rayH);
             screenBuffer[i].color = colorH;
             screenBuffer[i].side = 'H';
+            if (hideMap) {
+                return;
+            }
             DrawLineEx(p.pos, rayH, 1, GREEN);
         } else {
             screenBuffer[i].distance = distance(p.pos, rayV);
             screenBuffer[i].color = colorV;
             screenBuffer[i].side = 'V';
+            if (hideMap) {
+                return;
+            }
             DrawLineEx(p.pos, rayV, 1, GREEN);
         }
     }
@@ -330,8 +341,6 @@ void handleControls(Player* p) {
 
     int mapX = (int)(nextPos.x / MAP_TILE_SIZE);
     int mapY = (int)(nextPos.y / MAP_TILE_SIZE);
-
-    float offset = 10.0f;
 
     if (mapX >= 0 && mapX < MAP_NUM_COLS && mapY >= 0 && mapY < MAP_NUM_ROWS && map[mapY][mapX] == 0) {
         // No wall, update position
